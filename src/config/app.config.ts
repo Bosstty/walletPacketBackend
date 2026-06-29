@@ -15,4 +15,7 @@ export const appConfig = () => ({
     appId: process.env.WECHAT_APP_ID ?? '',
     appSecret: process.env.WECHAT_APP_SECRET ?? '',
   },
+  auth: {
+    inviteCode: process.env.AUTH_INVITE_CODE ?? '',
+  },
 });

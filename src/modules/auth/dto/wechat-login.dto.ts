@@ -29,4 +29,13 @@ export class WechatLoginDto {
   @IsString()
   @MaxLength(500)
   avatarUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Invite code required for first-time registration when enabled',
+    example: 'WALLET2026',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  inviteCode?: string;
 }

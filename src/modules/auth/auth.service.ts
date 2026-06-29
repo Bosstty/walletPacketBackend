@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
@@ -32,6 +37,7 @@ export class AuthService {
       openid: result.openid,
       nickname: dto.nickname,
       avatarUrl: dto.avatarUrl,
+      inviteCode: dto.inviteCode,
     });
   }
 
@@ -54,6 +60,7 @@ export class AuthService {
     avatarUrl?: string;
     phoneNumber?: string;
     countryCode?: string;
+    inviteCode?: string;
   }) {
     let user = await this.usersService.findActiveByOpenid(input.openid);
 
@@ -70,6 +77,8 @@ export class AuthService {
     }
 
     if (!user) {
+      this.assertInviteCode(input.inviteCode);
+
       try {
         user = await this.usersService.createActiveUser({
           openid: input.openid,
@@ -118,6 +127,20 @@ export class AuthService {
       tokenType: 'Bearer',
       user: profile,
     };
+  }
+
+  private assertInviteCode(inviteCode?: string) {
+    const expectedInviteCode = this.configService
+      .get<string>('auth.inviteCode')
+      ?.trim();
+
+    if (!expectedInviteCode) {
+      return;
+    }
+
+    if ((inviteCode ?? '').trim() !== expectedInviteCode) {
+      throw new ForbiddenException('邀请码无效');
+    }
   }
 
   private async fetchWechatSession(code: string) {
