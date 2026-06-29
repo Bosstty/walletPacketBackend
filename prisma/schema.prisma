@@ -29,6 +29,8 @@ enum BudgetScopeType {
 model User {
   id            String          @id @default(cuid())
   wechatOpenid  String          @unique
+  phoneNumber   String?         @unique
+  countryCode   String?
   nickname      String?
   avatarUrl     String?
   currency      String          @default("CNY")

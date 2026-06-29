@@ -16,14 +16,28 @@ export class UsersService {
     });
   }
 
+  async findActiveByPhoneNumber(phoneNumber: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        phoneNumber,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+    });
+  }
+
   async createActiveUser(input: {
     openid: string;
+    phoneNumber?: string;
+    countryCode?: string;
     nickname?: string;
     avatarUrl?: string;
   }) {
     return this.prisma.user.create({
       data: {
         wechatOpenid: input.openid,
+        phoneNumber: input.phoneNumber,
+        countryCode: input.countryCode,
         nickname: input.nickname,
         avatarUrl: input.avatarUrl,
       },
@@ -33,23 +47,34 @@ export class UsersService {
   async touchProfile(
     userId: string,
     input: {
+      phoneNumber?: string;
+      countryCode?: string;
       nickname?: string;
       avatarUrl?: string;
     },
   ) {
-    if (input.nickname === undefined && input.avatarUrl === undefined) {
+    if (
+      input.nickname === undefined &&
+      input.avatarUrl === undefined &&
+      input.phoneNumber === undefined &&
+      input.countryCode === undefined
+    ) {
       return this.getProfile(userId);
     }
 
     return this.prisma.user.update({
       where: { id: userId },
       data: {
+        ...(input.phoneNumber !== undefined ? { phoneNumber: input.phoneNumber } : {}),
+        ...(input.countryCode !== undefined ? { countryCode: input.countryCode } : {}),
         ...(input.nickname !== undefined ? { nickname: input.nickname } : {}),
         ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
       },
       select: {
         id: true,
         wechatOpenid: true,
+        phoneNumber: true,
+        countryCode: true,
         nickname: true,
         avatarUrl: true,
         currency: true,
@@ -72,6 +97,8 @@ export class UsersService {
       select: {
         id: true,
         wechatOpenid: true,
+        phoneNumber: true,
+        countryCode: true,
         nickname: true,
         avatarUrl: true,
         currency: true,
@@ -88,6 +115,24 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async rebindWechatIdentity(
+    userId: string,
+    input: {
+      openid: string;
+      phoneNumber?: string;
+      countryCode?: string;
+    },
+  ) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        wechatOpenid: input.openid,
+        ...(input.phoneNumber !== undefined ? { phoneNumber: input.phoneNumber } : {}),
+        ...(input.countryCode !== undefined ? { countryCode: input.countryCode } : {}),
+      },
+    });
   }
 
   async updateSettings(userId: string, dto: UpdateUserSettingsDto) {
