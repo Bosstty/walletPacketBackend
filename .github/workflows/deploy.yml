@@ -14,19 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Backend
-        run: |
-          npm run prisma:generate
-          npm run build
-
       - name: Deploy Backend
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -36,12 +23,31 @@ jobs:
           script: |
             set -e
             cd /var/www/walletPacketBackend
+            PREV_HEAD="$(git rev-parse HEAD)"
             git fetch origin main
             git checkout main
             git reset --hard origin/main
-            git rev-parse HEAD
-            npm ci
-            npm run prisma:generate
-            npm run build
-            pm2 startOrReload ecosystem.config.cjs --only wallet-packet-backend
-            pm2 save
+            NEW_HEAD="$(git rev-parse HEAD)"
+            echo "Deploying $PREV_HEAD -> $NEW_HEAD"
+            CHANGED_FILES="$(git diff --name-only "$PREV_HEAD" "$NEW_HEAD")"
+            echo "$CHANGED_FILES"
+
+            if echo "$CHANGED_FILES" | grep -Eq '^(package\.json|package-lock\.json)$'; then
+              npm ci --no-audit --prefer-offline --progress=false
+            else
+              echo "Skip npm ci: dependencies unchanged"
+            fi
+
+            if echo "$CHANGED_FILES" | grep -Eq '^(prisma/schema\.prisma|package\.json|package-lock\.json)$'; then
+              npm run prisma:generate
+            else
+              echo "Skip prisma generate: schema unchanged"
+            fi
+
+            if echo "$CHANGED_FILES" | grep -Eq '^(src/|prisma/|package\.json|package-lock\.json|tsconfig.*\.json|nest-cli\.json)'; then
+              npm run build
+              pm2 startOrReload ecosystem.config.cjs --only wallet-packet-backend
+              pm2 save
+            else
+              echo "Skip build/restart: no backend runtime changes"
+            fi
