@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DELETED
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum RecordStatus {
+  ACTIVE
+  DELETED
+}
+
+enum BudgetScopeType {
+  OVERALL
+  CATEGORY
+}
+
+model User {
+  id            String          @id @default(cuid())
+  wechatOpenid  String          @unique
+  nickname      String?
+  avatarUrl     String?
+  currency      String          @default("CNY")
+  decimalPlaces Int             @default(2)
+  weekStart     Int             @default(1)
+  showBalance   Boolean         @default(true)
+  status        UserStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+
+  @@index([status, updatedAt])
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  userId       String
+  name         String
+  type         TransactionType
+  icon         String?
+  color        String?
+  sortOrder    Int             @default(0)
+  isDefault    Boolean         @default(false)
+  isEnabled    Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+  user         User            @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@index([userId, type, isEnabled, sortOrder])
+  @@unique([userId, name, type])
+}
+
+model Transaction {
+  id                   String          @id @default(cuid())
+  userId               String
+  type                 TransactionType
+  amountCent           Int
+  categoryId           String
+  categoryNameSnapshot String
+  occurredAt           DateTime
+  occurredDate         String
+  occurredMonth        String
+  note                 String?
+  budgetIncluded       Boolean         @default(true)
+  status               RecordStatus    @default(ACTIVE)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  deletedAt            DateTime?
+  user                 User            @relation(fields: [userId], references: [id])
+  category             Category        @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, occurredMonth, status])
+  @@index([userId, occurredDate, status])
+  @@index([userId, categoryId, occurredMonth, status])
+}
+
+model Budget {
+  id             String            @id @default(cuid())
+  userId         String
+  month          String
+  scopeType      BudgetScopeType
+  categoryId     String?
+  amountCent     Int
+  alertThreshold Float             @default(0.8)
+  isEnabled      Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id])
+  category       Category?         @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, month, isEnabled])
+  @@unique([userId, month, scopeType, categoryId])
+}
