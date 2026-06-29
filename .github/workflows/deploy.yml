@@ -32,17 +32,13 @@ jobs:
             CHANGED_FILES="$(git diff --name-only "$PREV_HEAD" "$NEW_HEAD")"
             echo "$CHANGED_FILES"
 
-            if echo "$CHANGED_FILES" | grep -Eq '^(package\.json|package-lock\.json)$'; then
+            if [ ! -d node_modules ] || echo "$CHANGED_FILES" | grep -Eq '^(package\.json|package-lock\.json)$'; then
               npm ci --no-audit --prefer-offline --progress=false
             else
               echo "Skip npm ci: dependencies unchanged"
             fi
 
-            if echo "$CHANGED_FILES" | grep -Eq '^(prisma/schema\.prisma|package\.json|package-lock\.json)$'; then
-              npm run prisma:generate
-            else
-              echo "Skip prisma generate: schema unchanged"
-            fi
+            npm run prisma:generate
 
             if echo "$CHANGED_FILES" | grep -Eq '^(src/|prisma/|package\.json|package-lock\.json|tsconfig.*\.json|nest-cli\.json)'; then
               npm run build
